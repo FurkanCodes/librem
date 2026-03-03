@@ -1,12 +1,14 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoverflowCarousel } from '@/components/reader/CoverflowCarousel';
 import { SynopsisSheet } from '@/components/reader/SynopsisSheet';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { TabSearchHeader } from '@/components/ui/tab-search-header';
 import { getLibraryMetrics } from '@/constants/layout';
 import { AppSerifFont } from '@/constants/theme';
 import { useReaderUIState } from '@/features/reader/ui-mock';
@@ -77,41 +79,28 @@ export default function LibraryScreen() {
           />
         </View>
       ) : null}
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: appTokens.bg, opacity: 0.82 }]} />
+      <LinearGradient
+        pointerEvents="none"
+        colors={
+          isDark
+            ? ['rgba(0,0,0,1)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,1)']
+            : ['rgba(250,249,246,1)', 'rgba(250,249,246,0)', 'rgba(250,249,246,0)', 'rgba(250,249,246,1)']
+        }
+        locations={[0, 0.3, 0.7, 1]}
+        style={[StyleSheet.absoluteFillObject, { opacity: 0.8 }]}
+      />
 
       <View style={styles.content}>
-        {/* Search header */}
-        <View
-          style={[
-            styles.header,
-            {
-              borderBottomColor: appTokens.divider,
-              backgroundColor: appTokens.bgHeader,
-              paddingHorizontal: metrics.gutter,
-              paddingVertical: metrics.headerPadY,
-            },
-          ]}
-        >
-          <View
-            style={[
-              styles.search,
-              {
-                backgroundColor: appTokens.searchBg,
-                paddingHorizontal: metrics.searchPadX,
-                paddingVertical: metrics.searchPadY,
-              },
-            ]}
-          >
-            <IconSymbol name="magnifyingglass" size={15} color={appTokens.textMuted} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search your library…"
-              placeholderTextColor={appTokens.textFaint}
-              style={[styles.searchInput, { color: appTokens.text }]}
-            />
-          </View>
-        </View>
+        <TabSearchHeader
+          value={query}
+          onChangeText={setQuery}
+          backgroundColor={appTokens.bgHeader}
+          borderBottomColor={appTokens.divider}
+          searchBackgroundColor={appTokens.searchBg}
+          inputColor={appTokens.text}
+          iconColor={appTokens.textMuted}
+          placeholderTextColor={isDark ? appTokens.textMuted : 'rgba(28,25,23,0.5)'}
+        />
 
         {/* Section label */}
         <View style={[styles.heading, { paddingHorizontal: metrics.gutter }]}>
@@ -275,29 +264,17 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  header: {
-    borderBottomWidth: 1,
-  },
-  search: {
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    paddingVertical: 0,
-  },
   heading: {
     paddingTop: 4,
-    paddingBottom: 2,
+    paddingBottom: 8,
   },
   title: {
-    letterSpacing: -0.5,
+    lineHeight: 32,
+    letterSpacing: -0.6,
   },
   subtitle: {
     marginTop: 2,
+    lineHeight: 16,
   },
   carouselWrapper: {
     marginTop: 16,

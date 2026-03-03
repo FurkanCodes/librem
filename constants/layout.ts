@@ -21,9 +21,6 @@ export function getScale(width: number, height: number): Scale {
 
 export type LibraryMetrics = {
   gutter: number;
-  headerPadY: number;
-  searchPadY: number;
-  searchPadX: number;
   titleSize: number;
   subtitleSize: number;
   actionSize: number;
@@ -51,10 +48,7 @@ export function getLibraryMetrics(args: {
 
   return {
     gutter: clamp(Math.round(20 * scale), 16, 22),
-    headerPadY: clamp(Math.round(12 * scale), 8, 12),
-    searchPadY: clamp(Math.round(10 * scale), 8, 11),
-    searchPadX: clamp(Math.round(12 * scale), 10, 14),
-    titleSize: clamp(Math.round(26 * scale), 20, 28),
+    titleSize: clamp(Math.round(24 * scale), 20, 26),
     subtitleSize: clamp(Math.round(12 * scale), 11, 12),
     actionSize: clamp(Math.round(52 * scale), 44, 56),
 

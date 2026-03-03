@@ -1,11 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, useWindowDimensions, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Defs, G, Line, Path, Text as SvgText, TextPath } from 'react-native-svg';
 
-import { clamp, getScale } from '@/constants/layout';
 import { AppSerifFont } from '@/constants/theme';
 import { useReaderUIState } from '@/features/reader/ui-mock';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { TabSearchHeader } from '@/components/ui/tab-search-header';
 
 export default function ProfileScreen() {
   const {
@@ -17,309 +17,418 @@ export default function ProfileScreen() {
     setHapticEnabled,
   } = useReaderUIState();
   const [showSettings, setShowSettings] = useState(false);
-  const { width, height } = useWindowDimensions();
+  const [query, setQuery] = useState('');
+  const [speedTrackWidth, setSpeedTrackWidth] = useState(0);
   const insets = useSafeAreaInsets();
-  const { scale } = getScale(width, height);
-  const gutter = clamp(Math.round(20 * scale), 16, 22);
-  const topPad = clamp(Math.round(8 * scale), 6, 10);
-  const stampSize = clamp(Math.round(width * 0.32), 96, 132);
-
-  const appThemeLabel = useMemo(() => (state.appTheme === 'dark' ? 'Dark' : 'Light'), [state.appTheme]);
 
   if (showSettings) {
+    const WPM_MIN = 120;
+    const WPM_MAX = 380;
+    const speedPresets = [
+      { label: 'DELIBERATE', value: 120 },
+      { label: 'FLOWING', value: 220 },
+      { label: 'RAPID', value: 380 },
+    ] as const;
+    const activePresetValue =
+      state.preferences.wpm <= 180 ? 120 : state.preferences.wpm <= 300 ? 220 : 380;
+    const speedRatio = Math.max(
+      0,
+      Math.min(1, (state.preferences.wpm - WPM_MIN) / (WPM_MAX - WPM_MIN))
+    );
+
+    const updateWpmFromTrackX = (x: number) => {
+      if (speedTrackWidth <= 0) return;
+      const ratio = Math.max(0, Math.min(1, x / speedTrackWidth));
+      const nextWpm = Math.round(WPM_MIN + ratio * (WPM_MAX - WPM_MIN));
+      setWpm(nextWpm);
+    };
+
     return (
       <SafeAreaView
-        style={[
-          styles.root,
-          {
-            backgroundColor: appTokens.bg,
-            paddingHorizontal: gutter,
-            paddingTop: topPad,
-            paddingBottom: Math.max(insets.bottom, 0),
-          },
-        ]}
+        style={[styles.root, { backgroundColor: appTokens.bg }]}
         edges={['top']}
       >
-        <View style={styles.settingsHeader}>
-          <Pressable
-            onPress={() => setShowSettings(false)}
-            style={[styles.backBtn, { borderColor: appTokens.border }]}
-          >
-            <Text style={[styles.backText, { color: appTokens.text }]}>{'‹'}</Text>
-          </Pressable>
-          <Text
-            style={[styles.settingsTitle, { color: appTokens.text, fontFamily: AppSerifFont.medium }]}
-          >
-            Settings
-          </Text>
-        </View>
+        <TabSearchHeader
+          value={query}
+          onChangeText={setQuery}
+          backgroundColor={appTokens.bgHeader}
+          borderBottomColor={appTokens.divider}
+          searchBackgroundColor={appTokens.searchBg}
+          inputColor={appTokens.text}
+          iconColor={appTokens.textMuted}
+        />
 
-        <View
-          style={[
-            styles.settingsCard,
-            { backgroundColor: appTokens.surface, borderColor: appTokens.border },
-          ]}
+        <ScrollView
+          style={styles.settingsScroll}
+          contentContainerStyle={[styles.settingsBody, { paddingBottom: Math.max(16, insets.bottom + 8) }]}
+          showsVerticalScrollIndicator={false}
         >
-          <SettingRow label="Dark mode" tokens={appTokens}>
-            <Switch
-              value={state.appTheme === 'dark'}
-              onValueChange={(value) => setAppTheme(value ? 'dark' : 'light')}
-              trackColor={{ false: appTokens.toggleOff, true: appTokens.toggleOn }}
-            />
-          </SettingRow>
+          <View style={[styles.settingsTopBar, { borderBottomColor: appTokens.divider }]}>
+            <Pressable onPress={() => setShowSettings(false)} style={styles.settingsBackIconWrap}>
+              <IconSymbol name="chevron.left" size={22} color={appTokens.text} />
+            </Pressable>
+            <Text style={[styles.settingsTitle, { color: appTokens.text, fontFamily: AppSerifFont.regular }]}>
+              Settings
+            </Text>
+          </View>
 
-          <Divider color={appTokens.divider} />
+          <SectionLabel label="Appearance" color={appTokens.textFaint} />
+          <View style={[styles.settingsCard, { backgroundColor: appTokens.surface, borderColor: appTokens.border }]}>
+            <View style={styles.settingItemRow}>
+              <IconSymbol name="sun" size={17} color={appTokens.textMuted} />
+              <View style={styles.settingTextGroup}>
+                <Text style={[styles.settingItemTitle, { color: appTokens.text }]}>Dark Mode</Text>
+                <Text style={[styles.settingItemBody, { color: appTokens.textMuted }]}>Classic parchment</Text>
+              </View>
+              <TogglePill
+                active={state.appTheme === 'dark'}
+                onPress={() => setAppTheme(state.appTheme === 'dark' ? 'light' : 'dark')}
+                inactiveTrack={appTokens.toggleOff}
+                activeTrack={appTokens.cta}
+                showSunOnKnob={!state.appTheme || state.appTheme === 'light'}
+              />
+            </View>
 
-          <SettingRow label="Auto night mode" tokens={appTokens}>
-            <Switch
-              value={state.preferences.autoNightEnabled}
-              onValueChange={setAutoNightEnabled}
-              trackColor={{ false: appTokens.toggleOff, true: appTokens.toggleOn }}
-            />
-          </SettingRow>
+            <View style={[styles.settingsDivider, { backgroundColor: appTokens.divider }]} />
 
-          <Divider color={appTokens.divider} />
+            <View style={styles.settingItemRow}>
+              <IconSymbol name="moon" size={17} color={appTokens.textMuted} />
+              <View style={styles.settingTextGroup}>
+                <Text style={[styles.settingItemTitle, { color: appTokens.text }]}>Auto Night Mode</Text>
+                <Text style={[styles.settingItemBody, { color: appTokens.textMuted }]}>
+                  Switch to Dark theme after sunset
+                </Text>
+              </View>
+              <TogglePill
+                active={state.preferences.autoNightEnabled}
+                onPress={() => setAutoNightEnabled(!state.preferences.autoNightEnabled)}
+                inactiveTrack={appTokens.toggleOff}
+                activeTrack={appTokens.cta}
+              />
+            </View>
+          </View>
 
-          <SettingRow label="Haptics" tokens={appTokens}>
-            <Switch
-              value={state.preferences.hapticEnabled}
-              onValueChange={setHapticEnabled}
-              trackColor={{ false: appTokens.toggleOff, true: appTokens.toggleOn }}
-            />
-          </SettingRow>
+          <SectionLabel label="Reading" color={appTokens.textFaint} />
+          <View style={[styles.settingsCardReading, { backgroundColor: appTokens.surface, borderColor: appTokens.border }]}>
+            <View style={styles.readingTopRow}>
+              <IconSymbol name="feather" size={17} color={appTokens.textMuted} />
+              <View style={styles.readingTextGroup}>
+                <Text style={[styles.settingItemTitle, { color: appTokens.text }]}>Slow Read Speed</Text>
+                <Text style={[styles.settingItemBody, { color: appTokens.textMuted }]}>
+                  How fast words appear in Slow{'\n'}Read mode
+                </Text>
+              </View>
+              <View style={[styles.wpmBadge, { backgroundColor: 'rgba(30,18,8,0.04)' }]}>
+                <Text style={[styles.wpmValue, { color: appTokens.text, fontFamily: AppSerifFont.regular }]}>
+                  {state.preferences.wpm}
+                </Text>
+                <Text style={[styles.wpmUnit, { color: appTokens.textMuted }]}>WPM</Text>
+              </View>
+            </View>
 
-          <Divider color={appTokens.divider} />
-
-          <View style={styles.wpmRow}>
-            <Text style={[styles.settingLabel, { color: appTokens.text }]}>Reading speed</Text>
-            <View style={styles.wpmButtons}>
-              {[120, 220, 380].map((wpm) => {
-                const active = state.preferences.wpm === wpm;
+            <View style={styles.readingPresetRow}>
+              {speedPresets.map((preset) => {
+                const active = activePresetValue === preset.value;
                 return (
                   <Pressable
-                    key={wpm}
-                    onPress={() => setWpm(wpm)}
+                    key={preset.value}
+                    onPress={() => setWpm(preset.value)}
                     style={[
-                      styles.wpmChip,
-                      { backgroundColor: active ? appTokens.chipActive : appTokens.chipInactive },
+                      styles.readingPresetChip,
+                      { backgroundColor: active ? appTokens.cta : appTokens.chipInactive },
                     ]}
                   >
                     <Text
                       style={[
-                        styles.wpmChipText,
-                        { color: active ? appTokens.chipActiveText : appTokens.chipInactiveText },
+                        styles.readingPresetText,
+                        { color: active ? appTokens.ctaText : appTokens.chipInactiveText },
                       ]}
                     >
-                      {wpm}
+                      {preset.label}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
+
+            <View style={styles.speedBarWrap}>
+              <View
+                style={[styles.speedBarTrack, { backgroundColor: appTokens.sliderBg }]}
+                onLayout={(event) => setSpeedTrackWidth(event.nativeEvent.layout.width)}
+                onStartShouldSetResponder={() => true}
+                onMoveShouldSetResponder={() => true}
+                onResponderGrant={(event) => updateWpmFromTrackX(event.nativeEvent.locationX)}
+                onResponderMove={(event) => updateWpmFromTrackX(event.nativeEvent.locationX)}
+              >
+                <View
+                  style={[
+                    styles.speedBarFill,
+                    {
+                      backgroundColor: appTokens.sliderFg,
+                      width: `${speedRatio * 100}%`,
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.speedThumb,
+                    {
+                      backgroundColor: appTokens.sliderFg,
+                      left: `${speedRatio * 100}%`,
+                    },
+                  ]}
+                />
+              </View>
+              <View style={styles.speedLabelsRow}>
+                <Text style={[styles.speedLabel, { color: appTokens.textFaint }]}>SLOW</Text>
+                <Text style={[styles.speedLabel, { color: appTokens.textFaint }]}>FAST</Text>
+              </View>
+              <Text style={[styles.speedCaption, { color: appTokens.textMuted, fontFamily: AppSerifFont.italic }]}>
+                Comfortable reading pace
+              </Text>
+            </View>
           </View>
-        </View>
+
+          <SectionLabel label="Feedback" color={appTokens.textFaint} />
+          <View style={[styles.settingsCardFeedback, { backgroundColor: appTokens.surface, borderColor: appTokens.border }]}>
+            <View style={styles.settingItemRow}>
+              <IconSymbol name="vibrate" size={17} color={appTokens.textMuted} />
+              <View style={styles.settingTextGroup}>
+                <Text style={[styles.settingItemTitle, { color: appTokens.text }]}>Haptic on Save</Text>
+                <Text style={[styles.settingItemBody, { color: appTokens.textMuted }]}>
+                  Subtle vibration when collecting a quote
+                </Text>
+              </View>
+              <TogglePill
+                active={state.preferences.hapticEnabled}
+                onPress={() => setHapticEnabled(!state.preferences.hapticEnabled)}
+                inactiveTrack={appTokens.toggleOff}
+                activeTrack={appTokens.cta}
+              />
+            </View>
+          </View>
+
+          <SectionLabel label="About" color={appTokens.textFaint} />
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[
-        styles.root,
-        {
-          backgroundColor: appTokens.bg,
-          paddingHorizontal: gutter,
-          paddingTop: topPad,
-          paddingBottom: Math.max(insets.bottom, 0),
-        },
-      ]}
-      edges={['top']}
-    >
-      <Text style={[styles.title, { color: appTokens.text, fontFamily: AppSerifFont.medium }]}>
-        Profile
-      </Text>
-      <Text style={[styles.subtitle, { color: appTokens.text, fontFamily: AppSerifFont.italic }]}>
-        A Devoted Reader
-      </Text>
+    <SafeAreaView style={[styles.root, { backgroundColor: appTokens.bg }]} edges={['top']}>
+      <TabSearchHeader
+        value={query}
+        onChangeText={setQuery}
+        backgroundColor={appTokens.bgHeader}
+        borderBottomColor={appTokens.divider}
+        searchBackgroundColor={appTokens.searchBg}
+        inputColor={appTokens.text}
+        iconColor={appTokens.textMuted}
+      />
 
-      {/* Decorative rule */}
-      <View style={styles.decorativeRule}>
-        <View style={[styles.ruleLine, { backgroundColor: appTokens.divider }]} />
-        <Text style={[styles.ruleDiamond, { color: appTokens.textFaint }]}>◆</Text>
-        <View style={[styles.ruleLine, { backgroundColor: appTokens.divider }]} />
-      </View>
-
-      {/* Ex Libris stamp */}
-      <View style={styles.stampWrap}>
-        <Svg width={stampSize} height={stampSize} viewBox="0 0 120 120">
-          <Defs>
-            <Path id="bottomArc" d="M 20 80 A 44 44 0 0 0 100 80" />
-          </Defs>
-          <Circle cx="60" cy="60" r="56" stroke={appTokens.stamp} strokeWidth="1.2" strokeDasharray="3 3.5" opacity="0.5" fill="none" />
-          <Circle cx="60" cy="60" r="50" stroke={appTokens.stamp} strokeWidth="1.6" fill="none" />
-          <Circle cx="60" cy="60" r="46" stroke={appTokens.stamp} strokeWidth="0.5" fill="none" />
-
-          <G transform="translate(60,56) scale(0.9)" opacity="0.85">
-            <Path d="M0 -18 C8 -10, 12 2, 4 20 C2 14, -2 8, -4 2 C-8 -6, -4 -14, 0 -18Z"
-              fill="none" stroke={appTokens.stamp} strokeWidth="1.2" strokeLinejoin="round" />
-            <Line x1="0" y1="-18" x2="0" y2="20" stroke={appTokens.stamp} strokeWidth="0.8" />
-            <Path d="M-1 -10 C-5 -8, -8 -4, -6 0" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
-            <Path d="M-1 -4 C-5 -2, -8 2, -5 5" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
-            <Path d="M-1 3 C-4 5, -6 8, -3 10" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
-            <Path d="M1 -10 C5 -8, 8 -4, 6 0" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
-            <Path d="M1 -4 C5 -2, 8 2, 5 5" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
-            <Path d="M1 3 C4 5, 6 8, 3 10" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
-          </G>
-
-          <SvgText fontSize="8.5" fontFamily={AppSerifFont.regular} fill={appTokens.stamp} letterSpacing="3" opacity="0.7">
-            <TextPath href="#bottomArc" startOffset="50%" textAnchor="middle">EX LIBRIS</TextPath>
-          </SvgText>
-          <Circle cx="60" cy="17" r="1.5" fill={appTokens.stamp} opacity="0.4" />
-          <Circle cx="60" cy="103" r="1.5" fill={appTokens.stamp} opacity="0.4" />
-        </Svg>
-      </View>
-
-      {/* Stats grid */}
-      <View style={styles.statsGrid}>
-        <StatCard
-          value={state.streak.streak}
-          label="day streak"
-          color={appTokens.text}
-          muted={appTokens.textMuted}
-          accent={state.streak.streak > 0}
-          accentBg={appTokens.accentStar}
-          surfaceBg={appTokens.surface}
-          borderColor={appTokens.border}
-        />
-        <StatCard
-          value={state.highlights.length}
-          label="saved quotes"
-          color={appTokens.text}
-          muted={appTokens.textMuted}
-          surfaceBg={appTokens.surface}
-          borderColor={appTokens.border}
-        />
-        <StatCard
-          value={state.books.length}
-          label="in library"
-          color={appTokens.text}
-          muted={appTokens.textMuted}
-          surfaceBg={appTokens.surface}
-          borderColor={appTokens.border}
-        />
-        <StatCard
-          value={appThemeLabel}
-          label="theme"
-          color={appTokens.text}
-          muted={appTokens.textMuted}
-          surfaceBg={appTokens.surface}
-          borderColor={appTokens.border}
-        />
-      </View>
-
-      {/* Settings entry */}
-      <Pressable
-        onPress={() => setShowSettings(true)}
-        style={[
-          styles.settingsEntry,
-          { backgroundColor: appTokens.surface, borderColor: appTokens.border },
-        ]}
-      >
-        <Text style={[styles.settingsEntryText, { color: appTokens.text }]}>Reading Settings</Text>
-        <Text style={[styles.settingsEntryArrow, { color: appTokens.textMuted }]}>›</Text>
-      </Pressable>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <View style={styles.footerInner}>
-          <View style={[styles.footerLine, { backgroundColor: appTokens.text }]} />
-          <Text style={[styles.footerLabel, { color: appTokens.text }]}>Lector</Text>
-          <View style={[styles.footerLine, { backgroundColor: appTokens.text }]} />
+      <View style={styles.main}>
+        <View style={styles.hero}>
+          <View style={[styles.crestOuter, { borderColor: 'rgba(30,18,8,0.45)' }]}>
+            <View style={[styles.crestInner, { borderColor: 'rgba(30,18,8,0.65)' }]}>
+              <IconSymbol name="feather" size={18} color="#5a4b39" />
+            </View>
+          </View>
+          <Text style={[styles.heroTitle, { color: appTokens.text, fontFamily: AppSerifFont.italic }]}>
+            A Devoted Reader
+          </Text>
+          <Text style={[styles.heroMeta, { color: appTokens.textMuted }]}>EST. MARCH 2026</Text>
         </View>
-        <Text style={[styles.footerTagline, { color: appTokens.text, fontFamily: AppSerifFont.italic }]}>
-          For those who read between the lines.
-        </Text>
+
+        <View style={styles.decorativeRule}>
+          <View style={[styles.ruleLine, { backgroundColor: appTokens.divider }]} />
+          <Text style={[styles.ruleDiamond, { color: appTokens.textFaint }]}>◆</Text>
+          <View style={[styles.ruleLine, { backgroundColor: appTokens.divider }]} />
+        </View>
+
+        <View style={styles.statsGrid}>
+          <StatCard
+            icon="flame"
+            value={state.streak.streak}
+            label="DAY STREAK"
+            color={appTokens.text}
+            muted={appTokens.textMuted}
+            borderColor={appTokens.border}
+            surfaceBg={appTokens.surface}
+          />
+          <StatCard
+            icon="heart"
+            value={state.highlights.length}
+            label="SAVED QUOTES"
+            color={appTokens.text}
+            muted={appTokens.textMuted}
+            borderColor={appTokens.border}
+            surfaceBg={appTokens.surface}
+          />
+          <StatCard
+            icon="book"
+            value={state.books.length}
+            label="IN LIBRARY"
+            color={appTokens.text}
+            muted={appTokens.textMuted}
+            borderColor={appTokens.border}
+            surfaceBg={appTokens.surface}
+          />
+          <StatCard
+            icon="feather"
+            value="—"
+            label="PASSAGES READ"
+            color={appTokens.text}
+            muted={appTokens.textMuted}
+            borderColor={appTokens.border}
+            surfaceBg={appTokens.surface}
+          />
+        </View>
+
+        <View style={[styles.panel, { backgroundColor: appTokens.surface, borderColor: appTokens.border }]}>
+          <Pressable style={styles.panelRow} onPress={() => setShowSettings(true)}>
+            <IconSymbol name="radio" size={18} color={appTokens.textMuted} />
+            <View style={styles.panelText}>
+              <Text style={[styles.panelTitle, { color: appTokens.text }]}>Reading Settings</Text>
+              <Text style={[styles.panelSub, { color: appTokens.textMuted }]}>Speed, themes, typography</Text>
+            </View>
+            <IconSymbol name="chevron.right" size={16} color={appTokens.textMuted} />
+          </Pressable>
+
+          <View style={[styles.panelDivider, { backgroundColor: appTokens.divider }]} />
+
+          <View style={[styles.panelRow, { opacity: 0.38 }]}>
+            <IconSymbol name="info.circle" size={18} color={appTokens.textMuted} />
+            <View style={styles.panelText}>
+              <Text style={[styles.panelTitle, { color: appTokens.text }]}>About Lector</Text>
+              <Text style={[styles.panelSub, { color: appTokens.textMuted }]}>v1.0 · Ex Libris</Text>
+            </View>
+            <IconSymbol name="chevron.right" size={16} color={appTokens.textMuted} />
+          </View>
+        </View>
+
+        <View style={styles.footer}>
+          <View style={styles.footerInner}>
+            <View style={[styles.footerLine, { backgroundColor: appTokens.text }]} />
+            <Text style={[styles.footerLabel, { color: appTokens.text }]}>Lector</Text>
+            <View style={[styles.footerLine, { backgroundColor: appTokens.text }]} />
+          </View>
+          <Text style={[styles.footerTagline, { color: appTokens.text, fontFamily: AppSerifFont.italic }]}>
+            For those who read between the lines.
+          </Text>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
 function StatCard({
+  icon,
   value,
   label,
   color,
   muted,
-  accent,
-  accentBg,
-  surfaceBg,
   borderColor,
+  surfaceBg,
 }: {
+  icon: 'flame' | 'heart' | 'book' | 'feather';
   value: string | number;
   label: string;
   color: string;
   muted: string;
-  accent?: boolean;
-  accentBg?: string;
-  surfaceBg: string;
   borderColor: string;
+  surfaceBg: string;
 }) {
   return (
-    <View
-      style={[
-        styles.statCard,
-        {
-          borderColor,
-          backgroundColor: accent && accentBg ? accentBg : surfaceBg,
-        },
-      ]}
-    >
+    <View style={[styles.statCard, { borderColor, backgroundColor: surfaceBg }]}>
+      <IconSymbol name={icon} size={18} color={muted} />
       <Text style={[styles.statValue, { color, fontFamily: AppSerifFont.regular }]}>{value}</Text>
       <Text style={[styles.statLabel, { color: muted }]}>{label}</Text>
     </View>
   );
 }
 
-function SettingRow({
-  label,
-  children,
-  tokens,
-}: {
-  label: string;
-  children: React.ReactNode;
-  tokens: { text: string };
-}) {
-  return (
-    <View style={styles.settingRow}>
-      <Text style={[styles.settingLabel, { color: tokens.text }]}>{label}</Text>
-      {children}
-    </View>
-  );
+function SectionLabel({ label, color }: { label: string; color: string }) {
+  return <Text style={[styles.sectionLabel, { color }]}>{label}</Text>;
 }
 
-function Divider({ color }: { color: string }) {
-  return <View style={[styles.divider, { backgroundColor: color }]} />;
+function TogglePill({
+  active,
+  onPress,
+  inactiveTrack,
+  activeTrack,
+  showSunOnKnob = false,
+}: {
+  active: boolean;
+  onPress: () => void;
+  inactiveTrack: string;
+  activeTrack: string;
+  showSunOnKnob?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.toggleTrack,
+        {
+          backgroundColor: active ? activeTrack : inactiveTrack,
+          alignItems: active ? 'flex-end' : 'flex-start',
+        },
+      ]}
+    >
+      <View style={styles.toggleKnob}>
+        {showSunOnKnob ? <IconSymbol name="sun" size={7} color="#d2aa5f" /> : null}
+      </View>
+    </Pressable>
+  );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  title: {
-    fontSize: 26,
-    letterSpacing: -0.5,
+  main: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 22,
   },
-  subtitle: {
-    marginTop: 2,
-    fontSize: 15,
-    marginBottom: 0,
+  hero: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  crestOuter: {
+    width: 120,
+    height: 120,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  crestInner: {
+    width: 104,
+    height: 104,
+    borderRadius: 999,
+    borderWidth: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitle: {
+    fontSize: 37 / 2.2,
+    lineHeight: 25,
+  },
+  heroMeta: {
+    marginTop: 4,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.9,
   },
   decorativeRule: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 32,
-    marginTop: 16,
-    marginBottom: 16,
+    paddingHorizontal: 12,
+    marginBottom: 20,
   },
   ruleLine: {
     flex: 1,
@@ -327,79 +436,69 @@ const styles = StyleSheet.create({
   },
   ruleDiamond: {
     fontSize: 8,
-    letterSpacing: 3,
-  },
-  stampWrap: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  stampOuter: {
-    width: 120,
-    height: 120,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stampInner: {
-    width: 96,
-    height: 96,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stampText: {
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 2,
+    letterSpacing: 2.6,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 14,
+    justifyContent: 'space-between',
+    rowGap: 12,
+    marginBottom: 24,
   },
   statCard: {
-    width: '47%',
+    width: '48.2%',
     borderWidth: 1,
     borderRadius: 16,
-    paddingVertical: 16,
+    height: 102,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
   },
   statValue: {
-    fontSize: 26,
+    fontSize: 40 / 1.56,
     lineHeight: 26,
   },
   statLabel: {
     fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
+    fontWeight: '700',
+    letterSpacing: 1.06,
   },
-  settingsEntry: {
+  panel: {
     borderWidth: 1,
     borderRadius: 16,
-    padding: 16,
+    overflow: 'hidden',
+    marginBottom: 22,
+  },
+  panelRow: {
+    height: 70.5,
+    paddingHorizontal: 20,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 16,
   },
-  settingsEntryText: {
-    fontSize: 14,
+  panelText: {
+    flex: 1,
+    gap: 2,
+  },
+  panelTitle: {
+    fontSize: 29 / 2.07,
     fontWeight: '500',
+    lineHeight: 20,
   },
-  settingsEntryArrow: {
-    fontSize: 20,
-    fontWeight: '300',
+  panelSub: {
+    fontSize: 11,
+    lineHeight: 16.5,
+  },
+  panelDivider: {
+    height: 1,
+    marginHorizontal: 20,
   },
   footer: {
     alignItems: 'center',
-    marginTop: 24,
     opacity: 0.25,
     gap: 4,
+    marginTop: 'auto',
+    marginBottom: 6,
   },
   footerInner: {
     flexDirection: 'row',
@@ -407,75 +506,199 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   footerLine: {
-    height: 1,
     width: 32,
+    height: 1,
   },
   footerLabel: {
     fontSize: 8,
-    fontWeight: '800',
-    letterSpacing: 3,
+    fontWeight: '700',
+    letterSpacing: 2.6,
     textTransform: 'uppercase',
   },
   footerTagline: {
     fontSize: 9,
+    lineHeight: 13.5,
+    letterSpacing: 0.17,
   },
-  settingsHeader: {
+  settingsScroll: {
+    flex: 1,
+  },
+  settingsBody: {
+    paddingHorizontal: 20,
+    paddingTop: 0,
+  },
+  settingsTopBar: {
+    height: 66.6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
+    marginBottom: 14,
   },
-  backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: 'center',
+  settingsBackIconWrap: {
+    width: 38,
+    height: 38,
     justifyContent: 'center',
-  },
-  backText: {
-    fontSize: 20,
-    fontWeight: '300',
-    marginTop: -1,
+    alignItems: 'center',
   },
   settingsTitle: {
-    fontSize: 22,
+    fontSize: 20,
+    lineHeight: 28,
+  },
+  sectionLabel: {
+    marginTop: 6,
+    marginBottom: 8,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 2.14,
+    textTransform: 'uppercase',
   },
   settingsCard: {
     borderWidth: 1,
     borderRadius: 16,
-    padding: 14,
+    marginBottom: 14,
+    overflow: 'hidden',
   },
-  settingRow: {
+  settingItemRow: {
+    height: 70.5,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 48,
+    gap: 12,
   },
-  settingLabel: {
+  settingTextGroup: {
+    flex: 1,
+    gap: 2,
+    paddingRight: 8,
+  },
+  settingItemTitle: {
     fontSize: 14,
     fontWeight: '500',
+    lineHeight: 20,
   },
-  divider: {
+  settingItemBody: {
+    fontSize: 11,
+    lineHeight: 16.5,
+  },
+  settingsDivider: {
     height: 1,
-    marginVertical: 8,
+    marginHorizontal: 20,
   },
-  wpmRow: {
-    gap: 10,
+  toggleTrack: {
+    width: 40,
+    height: 22,
+    borderRadius: 999,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  wpmButtons: {
+  toggleKnob: {
+    width: 14,
+    height: 14,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  settingsCardReading: {
+    borderWidth: 1,
+    borderRadius: 16,
+    marginBottom: 14,
+    padding: 20,
+  },
+  readingTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    gap: 12,
+  },
+  readingTextGroup: {
+    flex: 1,
+    gap: 2,
+  },
+  wpmBadge: {
+    width: 50.5,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  wpmValue: {
+    fontSize: 28.2 / 1.6,
+    lineHeight: 18,
+  },
+  wpmUnit: {
+    fontSize: 8,
+    fontWeight: '700',
+    letterSpacing: 0.61,
+    textTransform: 'uppercase',
+  },
+  readingPresetRow: {
     flexDirection: 'row',
     gap: 8,
+    marginBottom: 16,
   },
-  wpmChip: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  readingPresetChip: {
+    flex: 1,
+    height: 32.5,
+    borderRadius: 16.4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  wpmChipText: {
+  readingPresetText: {
     fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    lineHeight: 16.5,
+    fontWeight: '700',
+    letterSpacing: 0.34,
+  },
+  speedBarWrap: {
+    marginTop: 4,
+  },
+  speedBarTrack: {
+    height: 6,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  speedBarFill: {
+    height: '100%',
+  },
+  speedThumb: {
+    position: 'absolute',
+    top: -4,
+    width: 14,
+    height: 14,
+    borderRadius: 999,
+    marginLeft: -7,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  speedLabelsRow: {
+    marginTop: 13.8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  speedLabel: {
+    fontSize: 9,
+    lineHeight: 13.5,
+    fontWeight: '700',
+    letterSpacing: 0.62,
+  },
+  speedCaption: {
+    textAlign: 'center',
+    marginTop: 8,
+    fontSize: 11,
+    lineHeight: 16.5,
+  },
+  settingsCardFeedback: {
+    borderWidth: 1,
+    borderRadius: 16,
+    marginBottom: 14,
+    overflow: 'hidden',
   },
 });

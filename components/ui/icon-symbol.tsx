@@ -1,12 +1,37 @@
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
+import { SymbolWeight } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
-type IconSymbolName = keyof typeof MAPPING;
+export type IconSymbolName =
+  | 'house.fill'
+  | 'paperplane.fill'
+  | 'chevron.left.forwardslash.chevron.right'
+  | 'chevron.left'
+  | 'chevron.right'
+  | 'bookmark'
+  | 'book'
+  | 'book.fill'
+  | 'heart'
+  | 'heart.fill'
+  | 'person.circle'
+  | 'person.crop.circle'
+  | 'magnifyingglass'
+  | 'gearshape'
+  | 'square.and.arrow.up'
+  | 'xmark'
+  | 'plus'
+  | 'flame'
+  | 'feather'
+  | 'sun'
+  | 'moon'
+  | 'vibrate'
+  | 'radio'
+  | 'info.circle';
+
+type IconMapping = Record<IconSymbolName, ComponentProps<typeof MaterialIcons>['name']>;
 
 /**
  * Add your SF Symbols to Material Icons mappings here.
@@ -17,13 +42,26 @@ const MAPPING = {
   'house.fill': 'home',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
+  'chevron.left': 'chevron-left',
   'chevron.right': 'chevron-right',
+  bookmark: 'bookmark-border',
+  book: 'menu-book',
   'book.fill': 'menu-book',
+  flame: 'whatshot',
+  feather: 'edit',
+  sun: 'wb-sunny',
+  moon: 'nightlight-round',
+  vibrate: 'vibration',
+  heart: 'favorite-border',
   'heart.fill': 'favorite',
+  radio: 'podcasts',
+  'info.circle': 'info-outline',
+  'person.circle': 'account-circle',
   'person.crop.circle': 'person',
   magnifyingglass: 'search',
   gearshape: 'settings',
   'square.and.arrow.up': 'share',
+  plus: 'add',
   xmark: 'close',
 } as IconMapping;
 

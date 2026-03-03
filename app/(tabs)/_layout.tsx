@@ -1,31 +1,34 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useReaderUIState } from '@/features/reader/ui-mock';
 
 export default function TabLayout() {
-  const { appTokens, state } = useReaderUIState();
-  const hasHighlights = state.highlights.length > 0;
-  const hasStreak = state.streak.streak > 0;
+  const insets = useSafeAreaInsets();
+  const bottomInset = Platform.OS === 'ios' ? Math.max(insets.bottom, 6) : Math.max(insets.bottom, 6);
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: appTokens.text,
-        tabBarInactiveTintColor: appTokens.textMuted,
+        tabBarActiveTintColor: '#1c1917',
+        tabBarInactiveTintColor: 'rgba(28,25,23,0.4)',
         tabBarStyle: {
-          backgroundColor: appTokens.tabBar,
-          borderTopColor: appTokens.tabBorder,
+          backgroundColor: 'rgba(255,255,255,0.9)',
+          borderTopColor: '#e7e5e4',
           borderTopWidth: 1,
+          height: 72 + bottomInset,
+          paddingTop: 8,
+          paddingBottom: bottomInset,
         },
+        tabBarItemStyle: { paddingTop: 2 },
+        tabBarIconStyle: { marginBottom: 2 },
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '700',
-          letterSpacing: 0.8,
-          textTransform: 'uppercase',
+          letterSpacing: 0.12,
         },
         headerShown: false,
         tabBarButton: HapticTab,
@@ -34,66 +37,21 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Library',
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="book.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="book" color={color} />,
         }}
       />
       <Tabs.Screen
         name="collection"
         options={{
           title: 'Collection',
-          tabBarIcon: ({ color }) => (
-            <View>
-              <IconSymbol size={26} name="heart.fill" color={color} />
-              {hasHighlights ? (
-                <View
-                  style={{
-                    position: 'absolute',
-                    right: -1,
-                    top: 0,
-                    width: 8,
-                    height: 8,
-                    borderRadius: 999,
-                    backgroundColor: '#ef4444',
-                    borderWidth: 2,
-                    borderColor: appTokens.tabBar,
-                  }}
-                />
-              ) : null}
-            </View>
-          ),
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="heart" color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => (
-            <View>
-              <IconSymbol size={26} name="person.crop.circle" color={color} />
-              {hasStreak ? (
-                <View
-                  style={{
-                    position: 'absolute',
-                    right: -8,
-                    top: -6,
-                    minWidth: 18,
-                    height: 18,
-                    borderRadius: 999,
-                    paddingHorizontal: 4,
-                    borderWidth: 2,
-                    borderColor: appTokens.tabBar,
-                    backgroundColor: appTokens.badge,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ color: appTokens.ctaText, fontSize: 9, fontWeight: '800' }}>
-                    {state.streak.streak}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          ),
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="person.circle" color={color} />,
         }}
       />
     </Tabs>

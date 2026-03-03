@@ -1,142 +1,115 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { clamp, getScale } from '@/constants/layout';
+import { TabSearchHeader } from '@/components/ui/tab-search-header';
 import { AppSerifFont } from '@/constants/theme';
 import { useReaderUIState } from '@/features/reader/ui-mock';
 
 export default function CollectionScreen() {
   const { state, appTokens, getBook } = useReaderUIState();
-  const { width, height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const { scale } = getScale(width, height);
-  const gutter = clamp(Math.round(20 * scale), 16, 22);
-  const topPad = clamp(Math.round(8 * scale), 6, 10);
-  const sortedHighlights = [...state.highlights].sort((firstItem, secondItem) =>
-    secondItem.createdAt.localeCompare(firstItem.createdAt)
+  const [query, setQuery] = useState('');
+
+  const sortedHighlights = useMemo(
+    () =>
+      [...state.highlights].sort((firstItem, secondItem) =>
+        secondItem.createdAt.localeCompare(firstItem.createdAt)
+      ),
+    [state.highlights]
   );
 
-  return (
-    <SafeAreaView
-      style={[
-        styles.root,
-        {
-          backgroundColor: appTokens.bg,
-          paddingHorizontal: gutter,
-          paddingTop: topPad,
-          paddingBottom: Math.max(insets.bottom, 0),
-        },
-      ]}
-      edges={['top']}
-    >
-      <Text style={[styles.title, { color: appTokens.text, fontFamily: AppSerifFont.medium }]}>
-        Collection
-      </Text>
-      <Text style={[styles.subtitle, { color: appTokens.textMuted }]}>Saved passages</Text>
+  const filteredHighlights = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return sortedHighlights;
+    return sortedHighlights.filter((highlight) => {
+      const sourceBook = getBook(highlight.bookId);
+      return `${highlight.text} ${sourceBook?.title ?? ''}`.toLowerCase().includes(normalized);
+    });
+  }, [getBook, query, sortedHighlights]);
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {sortedHighlights.length === 0 ? (
-          <View
-            style={[
-              styles.emptyCard,
-              { backgroundColor: appTokens.surface, borderColor: appTokens.border },
-            ]}
-          >
-            <IconSymbolPlaceholder size={48} color={appTokens.textMuted} style={{ marginBottom: 16, opacity: 0.45 }} />
-            <Text style={[styles.emptyTitle, { color: appTokens.text }]}>No highlights yet</Text>
-            <Text style={[styles.emptyBody, { color: appTokens.textMuted }]}>
-              Double tap or long press passages while reading to collect quotes.
-            </Text>
+  const isEmpty = filteredHighlights.length === 0;
+
+  return (
+    <SafeAreaView style={[styles.root, { backgroundColor: appTokens.bg }]} edges={['top']}>
+      <TabSearchHeader
+        value={query}
+        onChangeText={setQuery}
+        backgroundColor={appTokens.bgHeader}
+        borderBottomColor={appTokens.divider}
+        searchBackgroundColor={appTokens.searchBg}
+        inputColor={appTokens.text}
+        iconColor={appTokens.textMuted}
+      />
+
+      <View style={styles.main}>
+        <Text style={[styles.title, { color: appTokens.text, fontFamily: AppSerifFont.regular }]}>
+          Collection
+        </Text>
+
+        {isEmpty ? (
+          <View style={styles.emptyWrap}>
+            <View style={styles.emptyContent}>
+              <IconSymbol name="bookmark" size={48} color={appTokens.text} style={{ opacity: 0.45 }} />
+              <Text style={[styles.emptyTitle, { color: appTokens.text, opacity: 0.65 }]}>
+                No highlights yet.
+              </Text>
+              <Text style={[styles.emptyBody, { color: appTokens.textMuted }]}>
+                Double-tap text while reading to collect wisdom.
+              </Text>
+            </View>
           </View>
         ) : (
-          sortedHighlights.map((highlight) => {
-            const sourceBook = getBook(highlight.bookId);
-            return (
-              <Pressable
-                key={highlight.id}
-                onPress={() =>
-                  router.push({
-                    pathname: '/reader/[bookId]',
-                    params: {
-                      bookId: highlight.bookId,
-                      chunk: String(highlight.chunkIndex),
-                    },
-                  } as any)
-                }
-                style={[
-                  styles.quoteCard,
-                  { backgroundColor: appTokens.surface, borderColor: appTokens.border },
-                ]}
-              >
-                <View style={styles.bgIconWrap}>
-                  <IconSymbol name="heart.fill" size={16} color="#ef4444" />
-                </View>
-
-                <Text
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            {filteredHighlights.map((highlight) => {
+              const sourceBook = getBook(highlight.bookId);
+              return (
+                <Pressable
+                  key={highlight.id}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/reader/[bookId]',
+                      params: {
+                        bookId: highlight.bookId,
+                        chunk: String(highlight.chunkIndex),
+                      },
+                    } as never)
+                  }
                   style={[
-                    styles.quoteText,
-                    { color: appTokens.text, fontFamily: AppSerifFont.regular },
+                    styles.quoteCard,
+                    { backgroundColor: appTokens.surface, borderColor: appTokens.border },
                   ]}
                 >
-                  {'"'}
-                  {highlight.text}
-                  {'"'}
-                </Text>
-
-                <View style={styles.sourceRow}>
-                  <View style={[styles.coverWrap, { backgroundColor: appTokens.progressTrack }]}>
-                    {sourceBook ? (
-                      <Image
-                        source={{ uri: sourceBook.coverUrl }}
-                        style={styles.cover}
-                        contentFit="cover"
-                      />
-                    ) : null}
-                  </View>
                   <Text
-                    style={[styles.sourceText, { color: appTokens.textMuted }]}
-                    numberOfLines={1}
+                    style={[
+                      styles.quoteText,
+                      { color: appTokens.text, fontFamily: AppSerifFont.regular },
+                    ]}
                   >
-                    {sourceBook?.title ?? 'Unknown source'}
+                    {'"'}
+                    {highlight.text}
+                    {'"'}
                   </Text>
-                </View>
-              </Pressable>
-            );
-          })
-        )}
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
 
-/** Simple placeholder for empty-state icon (avoids importing a full icon lib here) */
-function IconSymbolPlaceholder({
-  size,
-  color,
-  style,
-}: {
-  size: number;
-  color: string;
-  style?: any;
-}) {
-  return (
-    <View
-      style={[
-        {
-          width: size,
-          height: size,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        style,
-      ]}
-    >
-      <Text style={{ fontSize: size * 0.6, color }}>♡</Text>
-    </View>
+                  <View style={styles.sourceRow}>
+                    <View style={[styles.coverWrap, { backgroundColor: appTokens.progressTrack }]}>
+                      {sourceBook ? (
+                        <Image source={{ uri: sourceBook.coverUrl }} style={styles.cover} contentFit="cover" />
+                      ) : null}
+                    </View>
+                    <Text style={[styles.sourceText, { color: appTokens.textMuted }]} numberOfLines={1}>
+                      {sourceBook?.title ?? 'Unknown source'}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -144,47 +117,46 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  title: {
-    fontSize: 26,
-    letterSpacing: -0.5,
+  main: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
-  subtitle: {
-    marginTop: 2,
+  title: {
+    fontSize: 24,
+    lineHeight: 32,
+    marginBottom: 20,
+  },
+  emptyWrap: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  emptyContent: {
+    width: '100%',
+    marginTop: 80,
+    alignItems: 'center',
+    opacity: 0.45,
+  },
+  emptyTitle: {
+    marginTop: 16,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  emptyBody: {
+    marginTop: 8,
     fontSize: 12,
-    marginBottom: 10,
+    lineHeight: 16,
+    textAlign: 'center',
   },
   content: {
     paddingBottom: 42,
     gap: 10,
   },
-  emptyCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  emptyBody: {
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
   quoteCard: {
     borderWidth: 1,
     borderRadius: 18,
     padding: 20,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  bgIconWrap: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    opacity: 0.2,
   },
   quoteText: {
     fontSize: 18,
