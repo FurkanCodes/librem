@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Switch, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Defs, G, Line, Path, Text as SvgText, TextPath } from 'react-native-svg';
 
+import { clamp, getScale } from '@/constants/layout';
 import { AppSerifFont } from '@/constants/theme';
 import { useReaderUIState } from '@/features/reader/ui-mock';
 
@@ -15,12 +17,29 @@ export default function ProfileScreen() {
     setHapticEnabled,
   } = useReaderUIState();
   const [showSettings, setShowSettings] = useState(false);
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const { scale } = getScale(width, height);
+  const gutter = clamp(Math.round(20 * scale), 16, 22);
+  const topPad = clamp(Math.round(8 * scale), 6, 10);
+  const stampSize = clamp(Math.round(width * 0.32), 96, 132);
 
   const appThemeLabel = useMemo(() => (state.appTheme === 'dark' ? 'Dark' : 'Light'), [state.appTheme]);
 
   if (showSettings) {
     return (
-      <SafeAreaView style={[styles.root, { backgroundColor: appTokens.bg }]} edges={['top']}>
+      <SafeAreaView
+        style={[
+          styles.root,
+          {
+            backgroundColor: appTokens.bg,
+            paddingHorizontal: gutter,
+            paddingTop: topPad,
+            paddingBottom: Math.max(insets.bottom, 0),
+          },
+        ]}
+        edges={['top']}
+      >
         <View style={styles.settingsHeader}>
           <Pressable
             onPress={() => setShowSettings(false)}
@@ -104,7 +123,18 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: appTokens.bg }]} edges={['top']}>
+    <SafeAreaView
+      style={[
+        styles.root,
+        {
+          backgroundColor: appTokens.bg,
+          paddingHorizontal: gutter,
+          paddingTop: topPad,
+          paddingBottom: Math.max(insets.bottom, 0),
+        },
+      ]}
+      edges={['top']}
+    >
       <Text style={[styles.title, { color: appTokens.text, fontFamily: AppSerifFont.medium }]}>
         Profile
       </Text>
@@ -121,11 +151,32 @@ export default function ProfileScreen() {
 
       {/* Ex Libris stamp */}
       <View style={styles.stampWrap}>
-        <View style={[styles.stampOuter, { borderColor: appTokens.stamp }]}>
-          <View style={[styles.stampInner, { borderColor: appTokens.stamp }]}>
-            <Text style={[styles.stampText, { color: appTokens.stamp }]}>EX LIBRIS</Text>
-          </View>
-        </View>
+        <Svg width={stampSize} height={stampSize} viewBox="0 0 120 120">
+          <Defs>
+            <Path id="bottomArc" d="M 20 80 A 44 44 0 0 0 100 80" />
+          </Defs>
+          <Circle cx="60" cy="60" r="56" stroke={appTokens.stamp} strokeWidth="1.2" strokeDasharray="3 3.5" opacity="0.5" fill="none" />
+          <Circle cx="60" cy="60" r="50" stroke={appTokens.stamp} strokeWidth="1.6" fill="none" />
+          <Circle cx="60" cy="60" r="46" stroke={appTokens.stamp} strokeWidth="0.5" fill="none" />
+
+          <G transform="translate(60,56) scale(0.9)" opacity="0.85">
+            <Path d="M0 -18 C8 -10, 12 2, 4 20 C2 14, -2 8, -4 2 C-8 -6, -4 -14, 0 -18Z"
+              fill="none" stroke={appTokens.stamp} strokeWidth="1.2" strokeLinejoin="round" />
+            <Line x1="0" y1="-18" x2="0" y2="20" stroke={appTokens.stamp} strokeWidth="0.8" />
+            <Path d="M-1 -10 C-5 -8, -8 -4, -6 0" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
+            <Path d="M-1 -4 C-5 -2, -8 2, -5 5" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
+            <Path d="M-1 3 C-4 5, -6 8, -3 10" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
+            <Path d="M1 -10 C5 -8, 8 -4, 6 0" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
+            <Path d="M1 -4 C5 -2, 8 2, 5 5" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
+            <Path d="M1 3 C4 5, 6 8, 3 10" stroke={appTokens.stamp} strokeWidth="0.7" fill="none" />
+          </G>
+
+          <SvgText fontSize="8.5" fontFamily={AppSerifFont.regular} fill={appTokens.stamp} letterSpacing="3" opacity="0.7">
+            <TextPath href="#bottomArc" startOffset="50%" textAnchor="middle">EX LIBRIS</TextPath>
+          </SvgText>
+          <Circle cx="60" cy="17" r="1.5" fill={appTokens.stamp} opacity="0.4" />
+          <Circle cx="60" cy="103" r="1.5" fill={appTokens.stamp} opacity="0.4" />
+        </Svg>
       </View>
 
       {/* Stats grid */}
@@ -252,8 +303,6 @@ function Divider({ color }: { color: string }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 8,
   },
   title: {
     fontSize: 26,

@@ -1,20 +1,38 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { clamp, getScale } from '@/constants/layout';
 import { AppSerifFont } from '@/constants/theme';
 import { useReaderUIState } from '@/features/reader/ui-mock';
 
 export default function CollectionScreen() {
   const { state, appTokens, getBook } = useReaderUIState();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const { scale } = getScale(width, height);
+  const gutter = clamp(Math.round(20 * scale), 16, 22);
+  const topPad = clamp(Math.round(8 * scale), 6, 10);
   const sortedHighlights = [...state.highlights].sort((firstItem, secondItem) =>
     secondItem.createdAt.localeCompare(firstItem.createdAt)
   );
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: appTokens.bg }]} edges={['top']}>
+    <SafeAreaView
+      style={[
+        styles.root,
+        {
+          backgroundColor: appTokens.bg,
+          paddingHorizontal: gutter,
+          paddingTop: topPad,
+          paddingBottom: Math.max(insets.bottom, 0),
+        },
+      ]}
+      edges={['top']}
+    >
       <Text style={[styles.title, { color: appTokens.text, fontFamily: AppSerifFont.medium }]}>
         Collection
       </Text>
@@ -54,6 +72,10 @@ export default function CollectionScreen() {
                   { backgroundColor: appTokens.surface, borderColor: appTokens.border },
                 ]}
               >
+                <View style={styles.bgIconWrap}>
+                  <IconSymbol name="heart.fill" size={16} color="#ef4444" />
+                </View>
+
                 <Text
                   style={[
                     styles.quoteText,
@@ -121,8 +143,6 @@ function IconSymbolPlaceholder({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 8,
   },
   title: {
     fontSize: 26,
@@ -157,6 +177,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 18,
     padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  bgIconWrap: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    opacity: 0.2,
   },
   quoteText: {
     fontSize: 18,

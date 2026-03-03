@@ -229,6 +229,7 @@ Scope: Entire repo rooted at `/Users/furkan/lector`.
   - Session summary appears only if reading activity occurred.
   - Share/copy behaviors succeed or gracefully fall back.
   - Safe-area behavior on iOS and Android gesture devices.
+  - The app should sucesfully be responsive and fit in all mobile devices
 - Project checks:
   - `npm run lint` passes.
   - `npx tsc --noEmit` passes.

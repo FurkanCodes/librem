@@ -7,9 +7,10 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
@@ -134,6 +135,8 @@ export default function ReaderScreen() {
     setHapticEnabled,
     setAutoNightEnabled,
   } = useReaderUIState();
+  const { height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const book = getBook(bookId) ?? state.books[0];
 
   const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
@@ -194,6 +197,10 @@ export default function ReaderScreen() {
   const currentHighlight = getHighlightForChunk(book.id, currentChunkIndex);
   const progressPercent = Math.round(((currentChunkIndex + 1) / chunks.length) * 100);
   const fontFamily = getFontFamily(state.preferences.fontId);
+  const pageHeight = Math.max(1, screenHeight - insets.top - insets.bottom);
+  const pagePadY = clamp(Math.round(pageHeight * 0.08), 44, 70);
+  const pageCardMinHeight = clamp(Math.round(pageHeight * 0.56), 320, 520);
+  const horizontalCardMinHeight = clamp(Math.round(pageHeight * 0.70), 320, 520);
 
   const onToggleHighlight = async (chunkIndex: number) => {
     const chunkText = chunks[chunkIndex];
@@ -311,9 +318,18 @@ export default function ReaderScreen() {
                 onPress={(event) => onPassageTap(index, event.nativeEvent.pageX, event.nativeEvent.pageY)}
                 onLongPress={() => openActionSheet(index)}
                 delayLongPress={600}
-                style={styles.page}
+                style={[styles.page, { height: pageHeight, paddingVertical: pagePadY }]}
               >
-                <View style={[styles.pageCard, { backgroundColor: readerTokens.cardBg, borderColor: readerTokens.border }]}>
+                <View
+                  style={[
+                    styles.pageCard,
+                    {
+                      backgroundColor: readerTokens.cardBg,
+                      borderColor: readerTokens.border,
+                      minHeight: pageCardMinHeight,
+                    },
+                  ]}
+                >
                   {highlighted ? <View style={styles.dogEar} /> : null}
 
                   {state.preferences.slowRead && index === currentChunkIndex ? (
@@ -375,7 +391,14 @@ export default function ReaderScreen() {
                 onPress={(event) => onPassageTap(currentChunkIndex, event.nativeEvent.pageX, event.nativeEvent.pageY)}
                 onLongPress={() => openActionSheet(currentChunkIndex)}
                 delayLongPress={600}
-                style={[styles.horizontalCard, { backgroundColor: readerTokens.cardBg, borderColor: readerTokens.border }]}
+                style={[
+                  styles.horizontalCard,
+                  {
+                    backgroundColor: readerTokens.cardBg,
+                    borderColor: readerTokens.border,
+                    minHeight: horizontalCardMinHeight,
+                  },
+                ]}
               >
                 {currentHighlight ? <View style={styles.dogEar} /> : null}
                 {state.preferences.slowRead ? (
@@ -544,11 +567,9 @@ const styles = StyleSheet.create({
   },
   page: {
     width: '100%',
-    minHeight: 720,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 70,
   },
   pageCard: {
     width: '100%',
@@ -557,7 +578,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 22,
     paddingVertical: 26,
-    minHeight: 420,
     justifyContent: 'space-between',
   },
   passageText: {
@@ -607,7 +627,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 22,
     padding: 24,
-    minHeight: 520,
     justifyContent: 'space-between',
   },
   horizontalProgressTrack: {

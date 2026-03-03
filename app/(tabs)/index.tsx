@@ -1,12 +1,13 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoverflowCarousel } from '@/components/reader/CoverflowCarousel';
 import { SynopsisSheet } from '@/components/reader/SynopsisSheet';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { getLibraryMetrics } from '@/constants/layout';
 import { AppSerifFont } from '@/constants/theme';
 import { useReaderUIState } from '@/features/reader/ui-mock';
 
@@ -26,7 +27,22 @@ export default function LibraryScreen() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [query, setQuery] = useState('');
   const [synopsisVisible, setSynopsisVisible] = useState(false);
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isDark = state.appTheme === 'dark';
+
+  const metrics = useMemo(
+    () =>
+      getLibraryMetrics({
+        width,
+        height,
+        insetsTop: insets.top,
+        insetsBottom: insets.bottom,
+      }),
+    [height, insets.bottom, insets.top, width]
+  );
+
+  const synopsisLines = height < 700 ? 3 : 4;
 
   const filteredBooks = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -50,19 +66,42 @@ export default function LibraryScreen() {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: appTokens.bg }]} edges={['top']}>
       {selectedBook ? (
-        <Image
-          source={{ uri: selectedBook.coverUrl }}
-          style={StyleSheet.absoluteFillObject}
-          blurRadius={60}
-          contentFit="cover"
-        />
+        <View
+          style={[StyleSheet.absoluteFillObject, { opacity: isDark ? 0.25 : 0.18 }]}
+        >
+          <Image
+            source={{ uri: selectedBook.coverUrl }}
+            style={[StyleSheet.absoluteFillObject, { transform: [{ scale: 1.25 }] }]}
+            blurRadius={60}
+            contentFit="cover"
+          />
+        </View>
       ) : null}
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: appTokens.bg, opacity: 0.82 }]} />
 
       <View style={styles.content}>
         {/* Search header */}
-        <View style={[styles.header, { borderBottomColor: appTokens.divider, backgroundColor: appTokens.bgHeader }]}>
-          <View style={[styles.search, { backgroundColor: appTokens.searchBg }]}>
+        <View
+          style={[
+            styles.header,
+            {
+              borderBottomColor: appTokens.divider,
+              backgroundColor: appTokens.bgHeader,
+              paddingHorizontal: metrics.gutter,
+              paddingVertical: metrics.headerPadY,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.search,
+              {
+                backgroundColor: appTokens.searchBg,
+                paddingHorizontal: metrics.searchPadX,
+                paddingVertical: metrics.searchPadY,
+              },
+            ]}
+          >
             <IconSymbol name="magnifyingglass" size={15} color={appTokens.textMuted} />
             <TextInput
               value={query}
@@ -75,30 +114,44 @@ export default function LibraryScreen() {
         </View>
 
         {/* Section label */}
-        <View style={styles.heading}>
-          <Text style={[styles.title, { color: appTokens.text, fontFamily: AppSerifFont.medium }]}>
+        <View style={[styles.heading, { paddingHorizontal: metrics.gutter }]}>
+          <Text
+            style={[
+              styles.title,
+              { color: appTokens.text, fontFamily: AppSerifFont.medium, fontSize: metrics.titleSize },
+            ]}
+          >
             My Library
           </Text>
-          <Text style={[styles.subtitle, { color: appTokens.textMuted }]}>
+          <Text style={[styles.subtitle, { color: appTokens.textMuted, fontSize: metrics.subtitleSize }]}>
             {filteredBooks.length} books collected
           </Text>
         </View>
 
         {/* 3D Coverflow Carousel */}
-        <CoverflowCarousel
-          books={filteredBooks}
-          selectedIndex={selectedIndex}
-          onSelectIndex={setSelectedIndex}
-          onOpenBook={(bookItem) => openReader(bookItem.id)}
-          textColor={appTokens.text}
-          mutedTextColor={appTokens.textMuted}
-          borderColor={appTokens.border}
-          isDark={isDark}
-        />
+        <View style={styles.carouselWrapper}>
+          <CoverflowCarousel
+            books={filteredBooks}
+            selectedIndex={selectedIndex}
+            onSelectIndex={setSelectedIndex}
+            onOpenBook={(bookItem) => openReader(bookItem.id)}
+            textColor={appTokens.text}
+            mutedTextColor={appTokens.textMuted}
+            borderColor={appTokens.border}
+            isDark={isDark}
+            bookWidth={metrics.bookWidth}
+            bookHeight={metrics.bookHeight}
+          />
+        </View>
 
         {/* Info panel */}
         {selectedBook ? (
-          <View style={styles.infoPanel}>
+          <View
+            style={[
+              styles.infoPanel,
+              { paddingHorizontal: metrics.gutter, paddingBottom: Math.max(insets.bottom, 16) },
+            ]}
+          >
             {/* Title + Author */}
             <View style={styles.titleBlock}>
               <Text
@@ -117,7 +170,7 @@ export default function LibraryScreen() {
               <Pressable onPress={() => setSynopsisVisible(true)} style={styles.synopsisPressable}>
                 <Text
                   style={[styles.synopsisPreview, { color: appTokens.textMuted, fontFamily: AppSerifFont.italic }]}
-                  numberOfLines={2}
+                  numberOfLines={synopsisLines}
                 >
                   {selectedBook.synopsis}
                 </Text>
@@ -166,7 +219,7 @@ export default function LibraryScreen() {
             </View>
 
             {/* Action buttons */}
-            <View style={styles.actions}>
+            <View style={[styles.actions, { height: metrics.actionSize }]}>
               <Pressable
                 onPress={() => openReader(selectedBook.id)}
                 style={[styles.readBtn, { backgroundColor: appTokens.cta }]}
@@ -178,9 +231,17 @@ export default function LibraryScreen() {
               </Pressable>
               <Pressable
                 onPress={() => router.push('/modal')}
-                style={[styles.plusBtn, { borderColor: appTokens.progressTrack }]}
+                style={[
+                  styles.plusBtn,
+                  {
+                    width: metrics.actionSize,
+                    height: metrics.actionSize,
+                    borderColor: appTokens.border,
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                  },
+                ]}
               >
-                <Text style={[styles.plusText, { color: appTokens.textMuted }]}>+</Text>
+                <IconSymbol name="plus" size={20} color={appTokens.textMuted} />
               </Pressable>
             </View>
           </View>
@@ -216,13 +277,9 @@ const styles = StyleSheet.create({
   },
   header: {
     borderBottomWidth: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
   },
   search: {
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -233,25 +290,24 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   heading: {
-    paddingHorizontal: 20,
     paddingTop: 4,
     paddingBottom: 2,
   },
   title: {
-    fontSize: 26,
     letterSpacing: -0.5,
   },
   subtitle: {
     marginTop: 2,
-    fontSize: 12,
+  },
+  carouselWrapper: {
+    flex: 1,
   },
   infoPanel: {
-    paddingHorizontal: 20,
-    paddingBottom: 10,
+    paddingBottom: 16,
   },
   titleBlock: {
     alignItems: 'center',
-    minHeight: 56,
+    marginTop: -8,
   },
   bookTitle: {
     textAlign: 'center',
@@ -266,7 +322,8 @@ const styles = StyleSheet.create({
   },
   synopsisPressable: {
     marginTop: 8,
-    minHeight: 52,
+    minHeight: 40,
+    maxHeight: 100,
     alignItems: 'center',
   },
   synopsisPreview: {
@@ -325,27 +382,25 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 16,
+    marginTop: 12,
   },
   readBtn: {
     flex: 1,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
     flexDirection: 'row',
     gap: 8,
   },
   readBtnText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
     letterSpacing: 0.5,
   },
   plusBtn: {
-    width: 52,
     borderRadius: 16,
-    borderWidth: 2,
-    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderStyle: 'solid',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -3,6 +3,13 @@ import { Platform } from 'react-native';
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 
+export type SerifFontFamily = Readonly<{
+  regular: string;
+  italic: string;
+  medium: string;
+  bold: string;
+}>;
+
 export const Colors = {
   light: {
     text: '#11181C',
@@ -75,4 +82,16 @@ export const SerifFonts = {
 } as const;
 
 /** Primary serif font used throughout the app UI (titles, book names, etc.) */
-export const AppSerifFont = SerifFonts.lora;
+export const AppSerifFont: SerifFontFamily =
+  Platform.select<SerifFontFamily>({
+    ios: {
+      regular: 'Georgia',
+      italic: 'Georgia-Italic',
+      // Georgia doesn't ship a "Medium" face; use Regular for "Medium" slots in the UI.
+      medium: 'Georgia',
+      bold: 'Georgia-Bold',
+    },
+    // Android doesn't include Georgia; fall back to the bundled serif (Lora) until a licensed Georgia is added.
+    default: SerifFonts.lora,
+    web: SerifFonts.lora,
+  }) ?? SerifFonts.lora;

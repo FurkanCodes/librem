@@ -1,10 +1,11 @@
+import MaskedView from '@react-native-masked-view/masked-view';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback } from 'react';
 import {
-  Dimensions,
   Pressable,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -15,6 +16,7 @@ import Animated, {
   withSpring
 } from 'react-native-reanimated';
 
+import { clamp } from '@/constants/layout';
 import type { Book } from '@/features/reader/ui-mock';
 
 type CoverflowCarouselProps = {
@@ -26,19 +28,19 @@ type CoverflowCarouselProps = {
   mutedTextColor: string;
   borderColor: string;
   isDark?: boolean;
+  bookWidth: number;
+  bookHeight: number;
 };
-
-const BOOK_W = 148;
-const BOOK_H = 222;
-const SCREEN_W = Dimensions.get('window').width;
 
 const SPRING_CONFIG = { stiffness: 320, damping: 32, mass: 0.9 };
 
-function getBookMotionProps(offset: number) {
+function getBookMotionProps(offset: number, bookWidth: number) {
   const abs = Math.abs(offset);
   const sign = Math.sign(offset);
   const rotateY = abs === 0 ? 0 : sign * 56;
-  const x = abs === 0 ? 0 : sign * (106 + (abs - 1) * 26);
+  const baseX = bookWidth * 0.72;
+  const stepX = bookWidth * 0.18;
+  const x = abs === 0 ? 0 : sign * (baseX + (abs - 1) * stepX);
   const z = -abs * 80;
   const scale = Math.max(1 - abs * 0.11, 0.6);
   const opacity = abs > 3 ? 0 : Math.max(0.3, 1 - abs * 0.25);
@@ -51,15 +53,21 @@ function BookCard({
   book,
   index,
   selectedIndex,
+  screenWidth,
+  bookWidth,
+  bookHeight,
   onPress,
 }: {
   book: Book;
   index: number;
   selectedIndex: number;
+  screenWidth: number;
+  bookWidth: number;
+  bookHeight: number;
   onPress: () => void;
 }) {
   const offset = index - selectedIndex;
-  const { rotateY, x, scale, opacity, zIndex } = getBookMotionProps(offset);
+  const { rotateY, x, scale, opacity, zIndex } = getBookMotionProps(offset, bookWidth);
   const isCenter = offset === 0;
 
   const animStyle = useAnimatedStyle(() => {
@@ -80,10 +88,10 @@ function BookCard({
       style={[
         {
           position: 'absolute',
-          left: SCREEN_W / 2 - BOOK_W / 2,
+          left: screenWidth / 2 - bookWidth / 2,
           top: 0,
-          width: BOOK_W,
-          height: BOOK_H,
+          width: bookWidth,
+          height: bookHeight,
         },
         animStyle,
       ]}
@@ -93,6 +101,7 @@ function BookCard({
         <View
           style={[
             styles.coverWrap,
+            { width: bookWidth, height: bookHeight },
             isCenter
               ? styles.centerShadow
               : styles.sideShadow,
@@ -132,17 +141,28 @@ function BookCard({
         </View>
 
         {/* Reflection */}
-        <View style={styles.reflectionContainer}>
+        <MaskedView
+          style={[
+            styles.reflectionContainer,
+            {
+              top: bookHeight,
+              width: bookWidth,
+              height: bookHeight * 0.45,
+            },
+          ]}
+          maskElement={
+            <LinearGradient
+              colors={['#FFFFFF', 'transparent']}
+              style={StyleSheet.absoluteFillObject}
+            />
+          }
+        >
           <Image
             source={{ uri: book.coverUrl }}
-            style={styles.reflectionImage}
+            style={[styles.reflectionImage, { height: bookHeight }]}
             contentFit="cover"
           />
-          <LinearGradient
-            colors={['rgba(0,0,0,0.78)', 'rgba(0,0,0,1)']}
-            style={StyleSheet.absoluteFillObject}
-          />
-        </View>
+        </MaskedView>
       </Pressable>
     </Animated.View>
   );
@@ -157,8 +177,11 @@ export function CoverflowCarousel({
   textColor,
   mutedTextColor,
   isDark = false,
+  bookWidth,
+  bookHeight,
 }: CoverflowCarouselProps) {
   const startX = useSharedValue(0);
+  const { width: screenWidth } = useWindowDimensions();
 
   const goTo = useCallback(
     (idx: number) => {
@@ -186,24 +209,13 @@ export function CoverflowCarousel({
       startX.value = 0;
     });
 
-  const containerH = BOOK_H + BOOK_H * 0.36 + 20;
+  const containerH = bookHeight + bookHeight * 0.45;
 
   return (
-    <View style={{ height: containerH + 40 }}>
+    <View style={{ flex: 1, justifyContent: 'center' }}>
       {/* Carousel area */}
       <GestureDetector gesture={panGesture}>
-        <View style={[styles.carouselContainer, { height: containerH }]}>
-          {/* Shelf glow */}
-          <View
-            style={[
-              styles.shelfGlow,
-              {
-                backgroundColor: isDark
-                  ? 'rgba(200,169,110,0.25)'
-                  : 'rgba(160,140,110,0.35)',
-              },
-            ]}
-          />
+        <View style={[styles.carouselContainer, { height: containerH, justifyContent: 'center', alignItems: 'center' }]}>
 
           {books.map((book, i) => (
             <BookCard
@@ -211,6 +223,9 @@ export function CoverflowCarousel({
               book={book}
               index={i}
               selectedIndex={selectedIndex}
+              screenWidth={screenWidth}
+              bookWidth={bookWidth}
+              bookHeight={bookHeight}
               onPress={() => {
                 if (i === selectedIndex) onOpenBook(book);
                 else goTo(i);
@@ -218,73 +233,30 @@ export function CoverflowCarousel({
             />
           ))}
 
-          {/* Nav arrows */}
-          {selectedIndex > 0 && (
-            <Pressable
-              onPress={() => goTo(selectedIndex - 1)}
-              style={[
-                styles.navArrow,
-                styles.navLeft,
-                {
-                  backgroundColor: isDark
-                    ? 'rgba(237,217,176,0.10)'
-                    : 'rgba(255,255,255,0.70)',
-                },
-              ]}
-            >
-              <Animated.Text style={[styles.arrowText, { color: textColor }]}>
-                ‹
-              </Animated.Text>
-            </Pressable>
-          )}
-          {selectedIndex < books.length - 1 && (
-            <Pressable
-              onPress={() => goTo(selectedIndex + 1)}
-              style={[
-                styles.navArrow,
-                styles.navRight,
-                {
-                  backgroundColor: isDark
-                    ? 'rgba(237,217,176,0.10)'
-                    : 'rgba(255,255,255,0.70)',
-                },
-              ]}
-            >
-              <Animated.Text style={[styles.arrowText, { color: textColor }]}>
-                ›
-              </Animated.Text>
-            </Pressable>
-          )}
+          {/* Dot indicators */}
+          <View style={[styles.dots, { position: 'absolute', bottom: clamp(Math.round(bookHeight * 0.04), 8, 14), left: 0, right: 0, zIndex: 10 }]}>
+            {books.map((_, i) => {
+              const active = i === selectedIndex;
+              return (
+                <Pressable
+                  key={i}
+                  onPress={() => goTo(i)}
+                  style={[
+                    styles.dot,
+                    {
+                      backgroundColor: active ? textColor : mutedTextColor,
+                      width: active ? 20 : 6,
+                    },
+                  ]}
+                />
+              );
+            })}
+          </View>
         </View>
       </GestureDetector>
-
-      {/* Dot indicators */}
-      <View style={styles.dots}>
-        {books.map((_, i) => {
-          const active = i === selectedIndex;
-          return (
-            <Pressable
-              key={i}
-              onPress={() => goTo(i)}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor: active ? textColor : mutedTextColor,
-                  width: active ? 20 : 6,
-                },
-              ]}
-            />
-          );
-        })}
-      </View>
     </View>
   );
 }
-
-export const COVERFLOW_SIZE = {
-  width: BOOK_W,
-  height: BOOK_H,
-};
 
 const styles = StyleSheet.create({
   carouselContainer: {
@@ -294,8 +266,6 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   coverWrap: {
-    width: BOOK_W,
-    height: BOOK_H,
     borderRadius: 8,
     overflow: 'hidden',
   },
@@ -319,48 +289,13 @@ const styles = StyleSheet.create({
   },
   reflectionContainer: {
     position: 'absolute',
-    top: BOOK_H + 3,
     left: 0,
-    width: BOOK_W,
-    height: BOOK_H * 0.36,
     overflow: 'hidden',
     transform: [{ scaleY: -1 }],
-    opacity: 0.22,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
+    opacity: 0.3,
   },
   reflectionImage: {
     width: '100%',
-    height: BOOK_H,
-  },
-  shelfGlow: {
-    position: 'absolute',
-    bottom: BOOK_H * 0.36 + 10,
-    left: '15%',
-    right: '15%',
-    height: 2,
-    borderRadius: 1,
-  },
-  navArrow: {
-    position: 'absolute',
-    top: BOOK_H / 2 - 18,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 30,
-  },
-  navLeft: {
-    left: 12,
-  },
-  navRight: {
-    right: 12,
-  },
-  arrowText: {
-    fontSize: 24,
-    fontWeight: '300',
-    marginTop: -2,
   },
   dots: {
     flexDirection: 'row',

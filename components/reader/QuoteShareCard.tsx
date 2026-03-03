@@ -1,5 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+
+import { clamp } from '@/constants/layout';
 
 type QuoteShareCardProps = {
   text: string;
@@ -26,9 +28,22 @@ const VARIANT_COLORS = {
 export function QuoteShareCard({ text, bookTitle, author, variant }: QuoteShareCardProps) {
   const colors = VARIANT_COLORS[variant];
   const previewText = text.length > 250 ? `${text.substring(0, 247)}...` : text;
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(width - 40, 340);
+  const cardMinHeight = clamp(Math.round(cardWidth * 1.05), 240, 320);
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.cardBg,
+          borderColor: colors.border,
+          width: cardWidth,
+          minHeight: cardMinHeight,
+        },
+      ]}
+    >
       <Text style={[styles.quote, { color: colors.text }]}>
         {'"'}
         {previewText}
@@ -47,8 +62,6 @@ export function QuoteShareCard({ text, bookTitle, author, variant }: QuoteShareC
 
 const styles = StyleSheet.create({
   card: {
-    width: 300,
-    minHeight: 320,
     borderWidth: 1.5,
     borderRadius: 18,
     paddingHorizontal: 20,
