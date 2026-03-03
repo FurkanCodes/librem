@@ -42,7 +42,7 @@ export default function LibraryScreen() {
     [height, insets.bottom, insets.top, width]
   );
 
-  const synopsisLines = height < 700 ? 3 : 4;
+  const synopsisLines = height < 700 ? 8 : 15;
 
   const filteredBooks = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -300,14 +300,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   carouselWrapper: {
-    flex: 1,
+    marginTop: 16,
   },
   infoPanel: {
     paddingBottom: 16,
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   titleBlock: {
     alignItems: 'center',
-    marginTop: -8,
   },
   bookTitle: {
     textAlign: 'center',
@@ -323,7 +324,6 @@ const styles = StyleSheet.create({
   synopsisPressable: {
     marginTop: 8,
     minHeight: 40,
-    maxHeight: 100,
     alignItems: 'center',
   },
   synopsisPreview: {

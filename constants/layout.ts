@@ -42,8 +42,11 @@ export function getLibraryMetrics(args: {
   const usableH = Math.max(1, args.height - args.insetsTop - args.insetsBottom);
   const { scale } = getScale(args.width, args.height);
 
-  // Primary fix: cover art scales with available screen height.
-  const bookHeight = clamp(Math.round(usableH * 0.34), 150, 255);
+  // Adapt artwork size by phone class first, then by usable height.
+  // This keeps small phones compact and lets larger phones breathe.
+  const phoneArtworkScale = args.width <= 360 ? 0.92 : args.width >= 420 ? 1.08 : 1;
+  const baseBookHeight = usableH * 0.35 * phoneArtworkScale;
+  const bookHeight = clamp(Math.round(baseBookHeight), 145, 280);
   const bookWidth = Math.round(bookHeight * 0.667);
 
   return {

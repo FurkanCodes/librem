@@ -16,7 +16,6 @@ import Animated, {
   withSpring
 } from 'react-native-reanimated';
 
-import { clamp } from '@/constants/layout';
 import type { Book } from '@/features/reader/ui-mock';
 
 type CoverflowCarouselProps = {
@@ -91,7 +90,7 @@ function BookCard({
           left: screenWidth / 2 - bookWidth / 2,
           top: 0,
           width: bookWidth,
-          height: bookHeight,
+          height: bookHeight * 1.5,
         },
         animStyle,
       ]}
@@ -209,59 +208,56 @@ export function CoverflowCarousel({
       startX.value = 0;
     });
 
-  const containerH = bookHeight + bookHeight * 0.45;
+  const containerH = bookHeight + 45;
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center' }}>
-      {/* Carousel area */}
-      <GestureDetector gesture={panGesture}>
-        <View style={[styles.carouselContainer, { height: containerH, justifyContent: 'center', alignItems: 'center' }]}>
+    <GestureDetector gesture={panGesture}>
+      <View style={[styles.carouselContainer, { height: containerH, justifyContent: 'center', alignItems: 'center' }]}>
 
-          {books.map((book, i) => (
-            <BookCard
-              key={book.id}
-              book={book}
-              index={i}
-              selectedIndex={selectedIndex}
-              screenWidth={screenWidth}
-              bookWidth={bookWidth}
-              bookHeight={bookHeight}
-              onPress={() => {
-                if (i === selectedIndex) onOpenBook(book);
-                else goTo(i);
-              }}
-            />
-          ))}
+        {books.map((book, i) => (
+          <BookCard
+            key={book.id}
+            book={book}
+            index={i}
+            selectedIndex={selectedIndex}
+            screenWidth={screenWidth}
+            bookWidth={bookWidth}
+            bookHeight={bookHeight}
+            onPress={() => {
+              if (i === selectedIndex) onOpenBook(book);
+              else goTo(i);
+            }}
+          />
+        ))}
 
-          {/* Dot indicators */}
-          <View style={[styles.dots, { position: 'absolute', bottom: clamp(Math.round(bookHeight * 0.04), 8, 14), left: 0, right: 0, zIndex: 10 }]}>
-            {books.map((_, i) => {
-              const active = i === selectedIndex;
-              return (
-                <Pressable
-                  key={i}
-                  onPress={() => goTo(i)}
-                  style={[
-                    styles.dot,
-                    {
-                      backgroundColor: active ? textColor : mutedTextColor,
-                      width: active ? 20 : 6,
-                    },
-                  ]}
-                />
-              );
-            })}
-          </View>
+        {/* Dot indicators */}
+        <View style={[styles.dots, { position: 'absolute', bottom: 6, left: 0, right: 0, zIndex: 10 }]}>
+          {books.map((_, i) => {
+            const active = i === selectedIndex;
+            return (
+              <Pressable
+                key={i}
+                onPress={() => goTo(i)}
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor: active ? textColor : mutedTextColor,
+                    width: active ? 20 : 6,
+                  },
+                ]}
+              />
+            );
+          })}
         </View>
-      </GestureDetector>
-    </View>
+      </View>
+    </GestureDetector>
   );
 }
 
 const styles = StyleSheet.create({
   carouselContainer: {
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
     justifyContent: 'flex-start',
     paddingTop: 10,
   },
